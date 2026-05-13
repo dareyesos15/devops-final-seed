@@ -45,5 +45,10 @@ Lean el documento del trabajo final para los detalles completos de cada requisit
 - **Dependencias:** Ver `requirements.txt`
 
 ---
+C -> Cultura, como lo aplicaron?
+A -> Automatización, Que automatizaron?
+L -> Learn, Que aprendizajes se dieron?
+M -> Measuring, Que midieron como exito KPI?
 
+---
 *DevOps & Automatización — UNAL Sede Manizales — 2026-1*
