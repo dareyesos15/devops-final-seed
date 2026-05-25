@@ -80,6 +80,9 @@ Lean el documento del trabajo final para los detalles completos de cada requisit
 - `docs/calms.md`
 - `docs/ec2-deploy.md`
 
+
+---
+Prueba pipeline 1.
 ---
 
 *DevOps & Automatización — UNAL Sede Manizales — 2026-1*
