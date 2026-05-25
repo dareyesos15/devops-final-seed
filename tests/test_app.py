@@ -7,7 +7,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-import app as app_module
+import app as app_module  # noqa: E402
 
 
 @pytest.fixture()
@@ -151,3 +151,20 @@ def test_delete_task_returns_404_when_not_found(client):
 
     assert response.status_code == 404
     assert response.get_json()["error"] == "Tarea no encontrada"
+
+
+def test_health_endpoint_returns_ok(client):
+    response = client.get("/health")
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data["status"] == "ok"
+    assert data["database"] == "ok"
+
+
+def test_metrics_endpoint_is_available(client):
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert "text/plain" in response.content_type
+    assert "flask_exporter_info" in response.get_data(as_text=True)
