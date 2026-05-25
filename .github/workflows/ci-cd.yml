@@ -109,7 +109,12 @@ jobs:
         run: |
           echo "${{ secrets.NEXUS_PASSWORD }}" | docker login \
             --username "${{ secrets.NEXUS_USERNAME }}" \
-            --password-stdin "http://${{ env.NEXUS_REGISTRY }}"
+            --password-stdin "${{ env.NEXUS_REGISTRY }}"
+
+      - name: Verify Nexus Docker auth
+        run: |
+          curl -fsS -u "${{ secrets.NEXUS_USERNAME }}:${{ secrets.NEXUS_PASSWORD }}" \
+            "http://${{ env.NEXUS_REGISTRY }}/v2/" >/dev/null
 
       - name: Extract Docker metadata
         id: meta
