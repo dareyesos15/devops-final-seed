@@ -90,14 +90,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Configure Docker daemon for Nexus registry over HTTP
-        uses: docker/setup-docker-action@v5
-        with:
-          set-host: true
-          daemon-config: |
-            {
-              "insecure-registries": ["${{ env.NEXUS_REGISTRY }}"]
-            }
+      - name: Configure Docker daemon for insecure registry
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{
+            "insecure-registries": ["'"$NEXUS_REGISTRY"'"]
+          }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          # Esperar a que el daemon esté listo
+          sleep 5
+
+      - name: Verify Docker daemon insecure registries
+        run: |
+          docker info --format '{{json .}}' | jq .InsecureRegistries
+          cat /etc/docker/daemon.json
 
       - name: Log in to Nexus Docker Registry
         run: |
