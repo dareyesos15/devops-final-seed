@@ -4,3 +4,9 @@ __pycache__/
 .env
 *.log
 node_modules/
+.coverage
+.pytest_cache/
+.ruff_cache/
+reports/
+*.sqlite3
+monitoring/grafana/data/

@@ -1,0 +1,187 @@
+name: CI-CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXUS_REGISTRY: ${{ vars.NEXUS_REGISTRY }}
+  NEXUS_DOCKER_IMAGE: ${{ vars.NEXUS_DOCKER_IMAGE }}
+  NEXUS_RAW_URL: ${{ vars.NEXUS_RAW_URL }}
+  K8S_NAMESPACE: devops-final
+
+jobs:
+  quality-security-tests:
+    name: Quality, Security and Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Create reports folder
+        run: mkdir -p reports
+
+      - name: Lint with Ruff
+        run: ruff check src tests
+
+      - name: Security scan with Bandit
+        run: bandit -r src -f json -o reports/bandit-report.json
+
+      - name: Dependency audit with pip-audit
+        run: pip-audit -r requirements.txt -f json -o reports/pip-audit-report.json
+
+      - name: Run tests with coverage
+        run: |
+          pytest -v \
+            --junitxml=reports/pytest-report.xml \
+            --cov=src \
+            --cov-report=xml:reports/coverage.xml \
+            --cov-report=html:htmlcov
+
+      - name: Package quality reports
+        if: always() && github.event_name != 'pull_request'
+        run: tar -czf quality-reports-${{ github.run_number }}.tar.gz reports htmlcov
+
+      - name: Upload quality reports to Nexus Raw
+        if: always() && github.event_name != 'pull_request'
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          BRANCH_OR_TAG="${GITHUB_REF_NAME//\//-}"
+          RAW_BASE="${NEXUS_RAW_URL%/}"
+          curl -f -u "${NEXUS_USERNAME}:${NEXUS_PASSWORD}" \
+            --upload-file quality-reports-${{ github.run_number }}.tar.gz \
+            "${RAW_BASE}/${{ github.repository }}/${BRANCH_OR_TAG}/quality-reports-${{ github.run_number }}.tar.gz"
+
+  build-and-push-image:
+    name: Build and Push Container Image
+    runs-on: ubuntu-latest
+    needs: quality-security-tests
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Nexus Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.NEXUS_REGISTRY }}
+          username: ${{ secrets.NEXUS_USERNAME }}
+          password: ${{ secrets.NEXUS_PASSWORD }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.NEXUS_DOCKER_IMAGE }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ env.NEXUS_DOCKER_IMAGE }}:sha-${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export image tags as artifact
+        run: |
+          mkdir -p reports
+          echo "${{ steps.meta.outputs.tags }}" > reports/image-tags.txt
+          echo "${{ env.NEXUS_DOCKER_IMAGE }}:sha-${{ github.sha }}" >> reports/image-tags.txt
+
+      - name: Upload image metadata to Nexus Raw
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          BRANCH_OR_TAG="${GITHUB_REF_NAME//\//-}"
+          RAW_BASE="${NEXUS_RAW_URL%/}"
+          curl -f -u "${NEXUS_USERNAME}:${NEXUS_PASSWORD}" \
+            --upload-file reports/image-tags.txt \
+            "${RAW_BASE}/${{ github.repository }}/${BRANCH_OR_TAG}/image-tags-${{ github.run_number }}.txt"
+
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-and-push-image
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl -n "$K8S_NAMESPACE" create secret docker-registry nexus-regcred \
+            --docker-server="$NEXUS_REGISTRY" \
+            --docker-username="${{ secrets.NEXUS_USERNAME }}" \
+            --docker-password="${{ secrets.NEXUS_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f k8s/todo-api-configmap.yaml
+          kubectl apply -f k8s/todo-api-pvc.yaml
+          kubectl apply -f k8s/todo-api-deployment.yaml
+          kubectl apply -f k8s/todo-api-service.yaml
+          kubectl apply -f k8s/prometheus-configmap.yaml
+          kubectl apply -f k8s/prometheus-deployment.yaml
+          kubectl apply -f k8s/prometheus-service.yaml
+          kubectl apply -f k8s/grafana-secret.yaml
+          kubectl apply -f k8s/grafana-pvc.yaml
+          kubectl apply -f k8s/grafana-datasource-configmap.yaml
+          kubectl apply -f k8s/grafana-deployment.yaml
+          kubectl apply -f k8s/grafana-service.yaml
+
+      - name: Deploy image built in this run
+        run: |
+          IMAGE_REF="${NEXUS_DOCKER_IMAGE}:sha-${GITHUB_SHA}"
+          kubectl -n "$K8S_NAMESPACE" set image deployment/todo-api todo-api="$IMAGE_REF"
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/todo-api --timeout=180s
