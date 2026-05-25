@@ -40,7 +40,7 @@ Servicios:
 
 ## Estado de implementación DevOps
 
-1. **Tests unitarios** — Mínimo 5, en carpeta `tests/` **-> Hecho**
+1. **Tests unitarios** — Mínimo 5, en carpeta `tests/` **Implementado**
 2. **Dockerfile + docker-compose.yml** — **Implementado**
 3. **Pipeline CI/CD** (`.github/workflows/ci-cd.yml`) — **Implementado**
 4. **Observabilidad** (logs JSON, `/health`, `/metrics`, Prometheus/Grafana) — **Implementado**
