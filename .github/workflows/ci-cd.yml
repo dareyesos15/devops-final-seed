@@ -100,11 +100,10 @@ jobs:
             }
 
       - name: Log in to Nexus Docker Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.NEXUS_REGISTRY }}
-          username: ${{ secrets.NEXUS_USERNAME }}
-          password: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login \
+            --username "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin "http://${{ env.NEXUS_REGISTRY }}"
 
       - name: Extract Docker metadata
         id: meta
