@@ -49,6 +49,10 @@ Servicios:
 7. **Documentación** (`docs/`) — **Implementado**
 8. **Artefactos** (imagen versionada + reportes de build) — **Implementado**
 
+Integracion de despliegue:
+
+- El pipeline ahora incluye etapa de CD para aplicar manifiestos Kubernetes y actualizar `todo-api` en `main`
+
 Repositorio de artefactos:
 
 - Docker Registry de Nexus para imagenes

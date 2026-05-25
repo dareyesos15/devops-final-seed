@@ -2,6 +2,8 @@
 
 Estos manifiestos son un baseline para el bonus del proyecto.
 
+El pipeline CI/CD los aplica automaticamente en la etapa `deploy-kubernetes` al hacer push a `main` (o ejecucion manual).
+
 ## Aplicar en orden
 
 ```bash

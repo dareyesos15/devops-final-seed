@@ -36,6 +36,14 @@ La publicacion de artefactos se realiza en Nexus:
   - `latest` cuando el push es a `main`
 - Publica tags de imagen en Nexus Raw
 
+3. `deploy-kubernetes`
+- Se ejecuta en `push` a `main` y en ejecucion manual (`workflow_dispatch`)
+- Configura `kubectl` con `KUBE_CONFIG_B64`
+- Aplica manifests de `k8s/`
+- Crea/actualiza el secret `nexus-regcred` para pull desde Nexus
+- Actualiza la imagen de `todo-api` con el tag inmutable `sha-<GITHUB_SHA>`
+- Valida despliegue con `kubectl rollout status`
+
 ## Artefactos generados
 
 - Reporte de pruebas JUnit: `reports/pytest-report.xml`
@@ -45,6 +53,7 @@ La publicacion de artefactos se realiza en Nexus:
 - Reporte pip-audit: `reports/pip-audit-report.json`
 - Paquete de calidad en Nexus Raw: `quality-reports-<run>.tar.gz`
 - Tags de imagen en Nexus Raw: `image-tags-<run>.txt`
+- Despliegue Kubernetes de `todo-api` actualizado al commit de la corrida
 
 ## Configuracion requerida en GitHub
 
@@ -54,10 +63,15 @@ Variables (`Repository variables`):
 - `NEXUS_DOCKER_IMAGE` (ej: `ec2-public-dns:8083/todo-api`)
 - `NEXUS_RAW_URL` (ej: `http://ec2-public-dns:8081/repository/devops-raw`)
 
+Variable de entorno en workflow:
+
+- `K8S_NAMESPACE` (valor por defecto en workflow: `devops-final`)
+
 Secrets (`Repository secrets`):
 
 - `NEXUS_USERNAME`
 - `NEXUS_PASSWORD`
+- `KUBE_CONFIG_B64` (kubeconfig del cluster codificado en Base64)
 
 ## Politica recomendada de merge
 

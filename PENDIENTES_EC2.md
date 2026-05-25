@@ -41,6 +41,8 @@ Este archivo resume lo que falta completar manualmente fuera del alcance del rep
 - Configurar storage class para PVC
 - Ajustar manifiestos con imagen real y secretos
 - Definir ingress controller y certificados
+- Definir exposicion segura del API server (`6443`) o usar self-hosted runner
+- Gestionar y rotar `KUBE_CONFIG_B64` usado por CI/CD
 
 ## 7. Gobierno de repositorio
 
