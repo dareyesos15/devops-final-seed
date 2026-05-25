@@ -55,7 +55,7 @@ La publicacion de artefactos se realiza en Nexus:
 - Tags de imagen en Nexus Raw: `image-tags-<run>.txt`
 - Despliegue Kubernetes de `todo-api` actualizado al commit de la corrida
 
-## Configuracion requerida en GitHub
+## Configuracion requerida en GitHub para este pipeline
 
 Variables (`Repository variables`):
 
