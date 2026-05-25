@@ -31,7 +31,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Servicios:
+Servicios del sistema:
 
 - Nexus: `http://localhost:8081` (UI), `localhost:8083` (Docker Registry)
 - API: `http://localhost:5000`
