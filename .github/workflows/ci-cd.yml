@@ -91,8 +91,9 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Configure Docker daemon for Nexus registry over HTTP
-        uses: docker/setup-docker-action@v4
+        uses: docker/setup-docker-action@v5
         with:
+          set-host: true
           daemon-config: |
             {
               "insecure-registries": ["${{ env.NEXUS_REGISTRY }}"]
