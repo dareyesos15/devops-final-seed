@@ -82,7 +82,7 @@ Lean el documento del trabajo final para los detalles completos de cada requisit
 
 
 ---
-Prueba pipeline 6.
+Prueba pipeline 7.
 ---
 
 *DevOps & Automatización — UNAL Sede Manizales — 2026-1*
